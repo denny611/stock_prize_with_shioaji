@@ -14,6 +14,7 @@ import pandas as pd
 from itertools import repeat
 from sqlalchemy import create_engine
 from sqlalchemy import text
+import matplotlib.pyplot as plt
 import keyring
 
 
@@ -59,7 +60,7 @@ def query(date_str, stock_id_str, engine):
     if(QUERY_CACHE_ROM_DB):
         db_result = db_query(engine, STOCK_ID, date_str)
         if(db_result != None):
-            print("cache hit")
+            # print("cache hit")
             return db_result;
     ticks = api.ticks(
         contract=api.Contracts.Stocks[stock_id_str], 
@@ -130,6 +131,9 @@ tickFramesDump2['Date'] = pd.DataFrame(date_strs)
 
 df = tickFramesDump2[~np.isnan(tickFramesDump2.Price)]
 print(df)
+plt.plot(df['Date'], df['Price'])
 #print(type(df[0]))
   
 db_insert(db_engine, tickFramesDump2)
+plt.show()
+
