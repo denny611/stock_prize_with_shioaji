@@ -20,7 +20,7 @@ import keyring
 
 DATE_FORMATTER = "%Y-%m-%d"
 DATA_ROWS = 100
-STOCK_ID = "0056"
+STOCK_ID = "0050"
 SQL_TABLE = "stock"
 SQL_DB = "webpool"
 QUERY_CACHE_ROM_DB = True
@@ -132,7 +132,9 @@ tickFramesDump2['Date'] = pd.DataFrame(date_strs)
 df = tickFramesDump2[~np.isnan(tickFramesDump2.Price)]
 print(df)
 plt.plot(df['Date'], df['Price'])
-#print(type(df[0]))
+numsCount = len(df['Date'])
+freq_x = 7
+plt.xticks(np.arange(0, numsCount, freq_x), rotation = 50)
   
 db_insert(db_engine, tickFramesDump2)
 plt.show()
