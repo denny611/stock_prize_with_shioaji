@@ -3,10 +3,10 @@
 """
 Created on Thu Oct 26 15:21:54 2023
 
-@author: denny
+@author: Daniel
 """
 from datetime import timedelta, datetime
-import shioaji as sj
+import shioaji as sj #https://sinotrade.github.io/
 import time
 import concurrent.futures
 import numpy as np
@@ -16,14 +16,42 @@ from sqlalchemy import create_engine
 from sqlalchemy import text
 import matplotlib.pyplot as plt
 import keyring
-
+import urllib.request
+import json
 
 DATE_FORMATTER = "%Y-%m-%d"
 DATA_ROWS = 100
 STOCK_ID = "0050"
 SQL_TABLE = "stock"
 SQL_DB = "webpool"
+DATE_FROM = "2023-06-25"
 QUERY_CACHE_ROM_DB = True
+PRINT_DEBUG_MSG = True
+
+def make_url_data_day_avg():
+    url_day_avg_twse = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_AVG_ALL"
+    headers = {'accept' : 'application/json ',}  #  application/json default
+    # headers = {'accept' : 'text/csv',}  # text/csv
+    return url_day_avg_twse, headers
+
+def url_get_data(url, headers):
+    req = urllib.request.Request(url, headers = headers)
+    with urllib.request.urlopen(req) as response:
+        data = response.read().decode()
+        # print(data)
+        # print(type(data))
+        return data
+
+def get_avg_price_from_jason_str(data):
+    data = json.loads(data)
+    df = pd.DataFrame(data)
+    df = df.loc[df['Code'] == STOCK_ID]
+    print(df)
+    print(type(df['ClosingPrice']))
+    print(df['ClosingPrice'].to_list()[0])
+    textstr = "[%s]Last Price: %s, Monthly Average Price :%s" \
+            %(STOCK_ID, df['ClosingPrice'].to_list()[0], df['MonthlyAveragePrice'].to_list()[0])
+    ax.legend([textstr])
 
 def db_connect():
     username = keyring.get_password("db", "username")
@@ -38,54 +66,32 @@ def db_connect():
 
 def db_insert(conn, df):
     df.to_sql(con=conn, name=SQL_TABLE, if_exists='append')
-    
 
 def db_query(engine,  stock_id_str, date_str):
     queryCmd = ("SELECT Price FROM %s where Stock_id = '%s' and Date  = '%s'" ) \
         %(SQL_TABLE, stock_id_str, date_str)
-    # print(queryCmd)
     with engine.connect() as connection:
-        #result = connection.execute(text("SELECT * FROM :table WHERE Date = :date"), dict(date=date_str, table = SQL_TABLE))
         result = connection.execute(text(queryCmd)).fetchone()
-    #result = cursor.fetchall()
+
     if(result != None):
-        # print(result[0])
         return result
     else:
         return None
 
 
-def query(date_str, stock_id_str, engine): 
-    # print(date_str)
+def query(date_str, stock_id_str, engine):
     if(QUERY_CACHE_ROM_DB):
         db_result = db_query(engine, STOCK_ID, date_str)
         if(db_result != None):
             # print("cache hit")
             return db_result;
     ticks = api.ticks(
-        contract=api.Contracts.Stocks[stock_id_str], 
+        contract=api.Contracts.Stocks[stock_id_str],
         date=date_str,
         query_type=sj.constant.TicksQueryType.LastCount,
         last_cnt=1,
     )
     return (ticks['close'])
-    
-def toPrice(value):
-    print(value[1])
-  
-    
-    if(len(value[1]) > 0):
-        return value[1][0]
-    else:
-        return 0
-
-def toDateStr(value):
-    print(value[1])
-    #print(time.time())
-    if(len(value[1]) > 0):
-        return datetime.fromtimestamp(value[1][0]//10e8).strftime(DATE_FORMATTER)
-    else:
-        return ""
 
 # ts = time.clock_gettime(time.CLOCK_REALTIME)
 api = sj.Shioaji(simulation=True) # simulate
@@ -97,9 +103,9 @@ api.login(
     secret_key=keyring.get_password("shioaji", "secret_key")  # @secret key
 )
 
-timeDeataOneDay = timedelta(days=1)
+time_deta_one_day = timedelta(days=1)
 
-date_str = "2023-07-17"
+date_str = DATE_FROM
 curr_date = datetime.strptime(date_str, DATE_FORMATTER)
 
 step = 0
@@ -107,7 +113,7 @@ ts = time.clock_gettime(time.CLOCK_REALTIME)
 date_strs  = []
 ticks = []
 while (step < DATA_ROWS):
-    curr_date += timeDeataOneDay
+    curr_date += time_deta_one_day
     date_str = curr_date.strftime(DATE_FORMATTER)
     date_strs.append(date_str)
     step += 1
@@ -115,13 +121,19 @@ while (step < DATA_ROWS):
 with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
     ticksGenerator = executor.map(query, date_strs, repeat(STOCK_ID), repeat(db_engine))
 
+try:
+    dfTicks = pd.DataFrame(ticksGenerator)
+except Exception as ex:
+    if(PRINT_DEBUG_MSG):
+        print(ex)
+    print("***********Fail to get data for STOCK id: %s"%STOCK_ID);
+    exit(1)
 
-dfTicks = pd.DataFrame(ticksGenerator)
+print("query time")
+print(time.clock_gettime(time.CLOCK_REALTIME) - ts)
 
 #data from server
 print(dfTicks)
-print("query time")
-print(time.clock_gettime(time.CLOCK_REALTIME) - ts)
 
 
 tickFramesDump2 =  pd.DataFrame()
@@ -131,11 +143,17 @@ tickFramesDump2['Date'] = pd.DataFrame(date_strs)
 
 df = tickFramesDump2[~np.isnan(tickFramesDump2.Price)]
 print(df)
+fig = plt.figure()
+ax = fig.add_subplot(1, 1, 1)
 plt.plot(df['Date'], df['Price'])
 numsCount = len(df['Date'])
 freq_x = 7
 plt.xticks(np.arange(0, numsCount, freq_x), rotation = 50)
-  
+
 db_insert(db_engine, tickFramesDump2)
+make_url_data_day_avg()
+url, headers = make_url_data_day_avg()
+data = url_get_data(url, headers)
+get_avg_price_from_jason_str(data)
 plt.show()
 
