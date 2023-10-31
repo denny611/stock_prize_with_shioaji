@@ -15,6 +15,7 @@ from itertools import repeat
 from sqlalchemy import create_engine
 from sqlalchemy import text
 import matplotlib.pyplot as plt
+from matplotlib.font_manager import FontProperties
 import keyring
 import urllib.request
 import json
@@ -49,9 +50,10 @@ def get_avg_price_from_jason_str(data):
     print(df)
     print(type(df['ClosingPrice']))
     print(df['ClosingPrice'].to_list()[0])
-    textstr = "[%s]Last Price: %s, Monthly Average Price :%s" \
-            %(STOCK_ID, df['ClosingPrice'].to_list()[0], df['MonthlyAveragePrice'].to_list()[0])
-    ax.legend([textstr])
+    font = FontProperties(fname='eduSong_Unicode.ttf', size = 20)
+    textstr="[%s]Last Price: %s, Monthly Average Price :%s" \
+            %(df['Name'].to_list()[0], df['ClosingPrice'].to_list()[0], df['MonthlyAveragePrice'].to_list()[0])
+    ax.legend([textstr], prop=font)
 
 def db_connect():
     username = keyring.get_password("db", "username")
