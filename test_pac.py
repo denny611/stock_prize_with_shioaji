@@ -48,11 +48,11 @@ def get_avg_price_from_jason_str(data):
     df = pd.DataFrame(data)
     df = df.loc[df['Code'] == STOCK_ID]
     print(df)
-    print(type(df['ClosingPrice']))
-    print(df['ClosingPrice'].to_list()[0])
     font = FontProperties(fname='eduSong_Unicode.ttf', size = 20)
-    textstr="[%s]Last Price: %s, Monthly Average Price :%s" \
-            %(df['Name'].to_list()[0], df['ClosingPrice'].to_list()[0], df['MonthlyAveragePrice'].to_list()[0])
+    textstr="[%s]Last Price: %s, Monthly Average Price :%s\nQuery in %s" \
+            %(df['Name'].to_list()[0], df['ClosingPrice'].to_list()[0], \
+            df['MonthlyAveragePrice'].to_list()[0], \
+            datetime.now().strftime(DATE_FORMATTER))
     ax.legend([textstr], prop=font)
 
 def db_connect():
