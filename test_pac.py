@@ -24,7 +24,7 @@ DATA_ROWS = 100
 STOCK_ID = "0050"
 SQL_TABLE = "stock"
 SQL_DB = "webpool"
-DATE_FROM = "2023-06-25"
+DATE_FROM = "2023-05-25"
 QUERY_CACHE_ROM_DB = True
 PRINT_DEBUG_MSG = True
 
@@ -83,17 +83,25 @@ def query(date_str, stock_id_str, engine):
     if(QUERY_CACHE_ROM_DB):
         db_result = db_query(engine, STOCK_ID, date_str)
         if(db_result != None):
-            # print("cache hit")
-            return db_result;
-    ticks = api.ticks(
-        contract=api.Contracts.Stocks[stock_id_str],
-        date=date_str,
-        query_type=sj.constant.TicksQueryType.LastCount,
-        last_cnt=1,
-    )
-    return (ticks['close'])
+            return ([db_result[0], True])
+    try:
+        ticks = api.ticks(
+            contract=api.Contracts.Stocks[stock_id_str],
+            date=date_str,
+            query_type=sj.constant.TicksQueryType.LastCount,
+            last_cnt=1,
+        )
+    except Exception as ex:
+        if(PRINT_DEBUG_MSG):
+            print(ex)
+        raise
+    #print(len(ticks['close']))
+    if(len(ticks['close']) == 0):
+        price = np.nan
+    else:
+        price = ticks['close'][0]
+    return ([price, False])
 
-# ts = time.clock_gettime(time.CLOCK_REALTIME)
 api = sj.Shioaji(simulation=True) # simulate
 print(sj.__version__)
 db_engine = db_connect()
@@ -137,10 +145,12 @@ print(dfTicks)
 
 
 tickFramesDump2 =  pd.DataFrame()
-tickFramesDump2['Price'] = pd.DataFrame(dfTicks)
+tickFramesDump2['Price'] = pd.DataFrame(dfTicks[0])
+tickFramesDump2['Cached'] = pd.DataFrame(dfTicks[1])
 tickFramesDump2['Stock_id'] = pd.DataFrame(np.repeat(STOCK_ID, DATA_ROWS))
 tickFramesDump2['Date'] = pd.DataFrame(date_strs)
-
+print(tickFramesDump2)
+#tickFramesDump2 = tickFramesDump2.loc[[0]]
 df = tickFramesDump2[~np.isnan(tickFramesDump2.Price)]
 print(df)
 fig = plt.figure()
@@ -149,11 +159,13 @@ plt.plot(df['Date'], df['Price'])
 numsCount = len(df['Date'])
 freq_x = 7
 plt.xticks(np.arange(0, numsCount, freq_x), rotation = 50)
-
+tickFramesDump2 = tickFramesDump2.loc[tickFramesDump2['Cached'] == False]
+print(tickFramesDump2)
+tickFramesDump2 = tickFramesDump2.drop('Cached', axis = 'columns')
+print(tickFramesDump2)
 db_insert(db_engine, tickFramesDump2)
 make_url_data_day_avg()
 url, headers = make_url_data_day_avg()
 data = url_get_data(url, headers)
 get_avg_price_from_jason_str(data)
 plt.show()
-
