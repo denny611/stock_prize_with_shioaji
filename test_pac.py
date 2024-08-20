@@ -12,8 +12,9 @@ import concurrent.futures
 import numpy as np
 import pandas as pd
 from itertools import repeat
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine #pip install pandas sqlalchemy
 from sqlalchemy import text
+from sqlalchemy import Table, Column, Integer, String, MetaData
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
 import keyring
@@ -24,7 +25,7 @@ DATE_FORMATTER = "%Y-%m-%d"
 DATA_ROWS = 100
 STOCK_ID = "0050"
 SQL_TABLE = "stock"
-SQL_DB = "webpool"
+SQL_DB = "webpool.db"
 DATE_FROM = "2023-05-25"
 QUERY_CACHE_ROM_DB = True
 PRINT_DEBUG_MSG = True
@@ -56,14 +57,23 @@ def get_avg_price_from_jason_str(data):
     ax.legend([textstr], prop=font)
 
 def db_connect():
-    username = keyring.get_password("db", "username")
-    password = keyring.get_password("db", "password")
     try:
-        engine = create_engine('mysql+pymysql://%s:%s@localhost/'%(username,password)  + SQL_DB)
+    	engine = create_engine(f'sqlite:///{SQL_DB}')
     except Exception as ex:
         print(ex)
     return engine
 
+def db_create_table(engine):
+	meta = MetaData()
+	
+	students = Table(
+   	SQL_TABLE, meta, 
+   	Column('index', Integer), 
+   	Column('stock_id', String), 
+   	Column('PRICE', Integer), 
+   	Column('date', String), 
+   	)
+	meta.create_all(engine)
 
 
 def db_insert(conn, df):
@@ -80,6 +90,8 @@ def db_query(engine,  stock_id_str, date_str):
     else:
         return None
 
+def db_close(engine):
+	engine.dispose()
 
 def query(date_str, stock_id_str, engine):
     if(QUERY_CACHE_ROM_DB):
@@ -105,13 +117,15 @@ def query(date_str, stock_id_str, engine):
     return ([price, False])
 
 api = sj.Shioaji(simulation=True) # simulate
-print(sj.__version__)
+print(f"sj ver:{sj.__version__}")
 db_engine = db_connect()
-
+db_create_table(db_engine)
+print("++api login")
 api.login(
     api_key=keyring.get_password("shioaji", "api_key"),     # @api key
     secret_key=keyring.get_password("shioaji", "secret_key")  # @secret key
 )
+print("--api login")
 
 time_deta_one_day = timedelta(days=1)
 
@@ -166,6 +180,7 @@ print(tickFramesDump2)
 tickFramesDump2 = tickFramesDump2.drop('Cached', axis = 'columns')
 print(tickFramesDump2)
 db_insert(db_engine, tickFramesDump2)
+db_close(db_engine)
 make_url_data_day_avg()
 url, headers = make_url_data_day_avg()
 data = url_get_data(url, headers)
