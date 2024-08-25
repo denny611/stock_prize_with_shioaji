@@ -15,46 +15,20 @@ from itertools import repeat
 from sqlalchemy import create_engine #pip install pandas sqlalchemy
 from sqlalchemy import text
 from sqlalchemy import Table, Column, Integer, String, MetaData
-import matplotlib.pyplot as plt
-from matplotlib.font_manager import FontProperties
+from bokeh.plotting import figure, show
+from bokeh.models import DatetimeTickFormatter
 import keyring
 import urllib.request
 import json
 
 DATE_FORMATTER = "%Y-%m-%d"
-DATA_ROWS = 100
+DATA_ROWS = 200
 STOCK_ID = "0050"
 SQL_TABLE = "stock"
 SQL_DB = "webpool.db"
-DATE_FROM = "2023-05-25"
+DATE_FROM = "2024-01-1"
 QUERY_CACHE_ROM_DB = True
 PRINT_DEBUG_MSG = True
-
-def make_url_data_day_avg():
-    url_day_avg_twse = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_AVG_ALL"
-    headers = {'accept' : 'application/json ',}  #  application/json default
-    # headers = {'accept' : 'text/csv',}  # text/csv
-    return url_day_avg_twse, headers
-
-def url_get_data(url, headers):
-    req = urllib.request.Request(url, headers = headers)
-    with urllib.request.urlopen(req) as response:
-        data = response.read().decode()
-        # print(data)
-        # print(type(data))
-        return data
-
-def get_avg_price_from_jason_str(data):
-    data = json.loads(data)
-    df = pd.DataFrame(data)
-    df = df.loc[df['Code'] == STOCK_ID]
-    print(df)
-    font = FontProperties(fname='eduSong_Unicode.ttf', size = 20)
-    textstr="[%s]Last Price: %s, Monthly Average Price :%s\nQuery in %s" \
-            %(df['Name'].to_list()[0], df['ClosingPrice'].to_list()[0], \
-            df['MonthlyAveragePrice'].to_list()[0], \
-            datetime.now().strftime(DATE_FORMATTER))
-    ax.legend([textstr], prop=font)
 
 def db_connect():
     try:
@@ -169,20 +143,19 @@ print(tickFramesDump2)
 #tickFramesDump2 = tickFramesDump2.loc[[0]]
 df = tickFramesDump2[~np.isnan(tickFramesDump2.Price)]
 print(df)
-fig = plt.figure()
-ax = fig.add_subplot(1, 1, 1)
-plt.plot(df['Date'], df['Price'])
+
+# create a new plot with a title and axis labels
+dates = pd.to_datetime([row for row in df['Date']])
+print(df['Date'])
+print(f"to_datetime: {dates}")
+p = figure(title=f"Stock price of {STOCK_ID}", x_axis_label='date', y_axis_label='price', x_axis_type="datetime")
+p.line(dates, df['Price'])
 numsCount = len(df['Date'])
-freq_x = 7
-plt.xticks(np.arange(0, numsCount, freq_x), rotation = 50)
 tickFramesDump2 = tickFramesDump2.loc[tickFramesDump2['Cached'] == False]
 print(tickFramesDump2)
 tickFramesDump2 = tickFramesDump2.drop('Cached', axis = 'columns')
 print(tickFramesDump2)
 db_insert(db_engine, tickFramesDump2)
 db_close(db_engine)
-make_url_data_day_avg()
-url, headers = make_url_data_day_avg()
-data = url_get_data(url, headers)
-get_avg_price_from_jason_str(data)
-plt.show()
+
+show(p)
