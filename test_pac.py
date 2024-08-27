@@ -118,6 +118,7 @@ while (step < DATA_ROWS):
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
     ticksGenerator = executor.map(query, date_strs, repeat(STOCK_ID), repeat(db_engine))
+api.logout()
 
 try:
     dfTicks = pd.DataFrame(ticksGenerator)
