@@ -36,7 +36,7 @@ import json
 
 DATE_FORMATTER = "%Y-%m-%d"
 DATA_ROWS = 100
-STOCK_ID = "0056"
+STOCK_ID = "006208"
 SQL_TABLE = "stock"
 SQL_DB = "/content/drive/MyDrive/py_stock/webpool.db"
 DATE_FROM = "2023-05-25"
@@ -109,6 +109,7 @@ def query(date_str, stock_id_str, engine):
             print(ex)
         raise
     #print(len(ticks['close']))
+    print(ticks)
     if(len(ticks['close']) == 0):
         price = np.nan
     else:
@@ -141,9 +142,10 @@ while (step < DATA_ROWS):
     date_strs.append(date_str)
     step += 1
 
+#print(api.Contracts.Stocks[STOCK_ID].name())
 with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
     ticksGenerator = executor.map(query, date_strs, repeat(STOCK_ID), repeat(db_engine))
-
+api.logout()
 try:
     dfTicks = pd.DataFrame(ticksGenerator)
 except Exception as ex:
@@ -171,6 +173,7 @@ print(df)
 fig = plt.figure()
 matlib_loadfont()
 ax = fig.add_subplot(1, 1, 1)
+fig.suptitle(STOCK_ID)
 plt.plot(df['Date'], df['Price'])
 plt.ylabel("收盤價")
 numsCount = len(df['Date'])
