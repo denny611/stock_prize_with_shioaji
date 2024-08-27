@@ -8,12 +8,34 @@
 """
 !pip install shioaji
 
+"""
+## [down load font]
 !wget 'https://noto-website-2.storage.googleapis.com/pkgs/NotoSansCJKtc-hinted.zip'
 !mkdir /tmp/fonts
 !unzip -o NotoSansCJKtc-hinted.zip -d /tmp/fonts/
 !mv /tmp/fonts/NotoSansMonoCJKtc-Regular.otf /usr/share/fonts/truetype/NotoSansMonoCJKtc-Regular.otf -f
 !rm -rf /tmp/fonts
-!rm NotoSansCJKtc-hinted.zip 
+!rm NotoSansCJKtc-hinted.zip
+"""
+
+
+#mount google  driver
+from google.colab import drive
+drive.mount('/content/drive')
+
+
+## [copy  font from gDriver]
+!cp /content/drive/MyDrive/py_stock/NotoSansCJKtc-hinted/NotoSansMonoCJKtc-Regular.otf /usr/share/fonts/truetype/NotoSansMonoCJKtc-Regular.otf
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+
+
+
+@author: Daniel
+"""
+
 
 from datetime import timedelta, datetime
 import shioaji as sj #https://sinotrade.github.io/
@@ -39,7 +61,7 @@ DATA_ROWS = 100
 STOCK_ID = "006208"
 SQL_TABLE = "stock"
 SQL_DB = "/content/drive/MyDrive/py_stock/webpool.db"
-DATE_FROM = "2023-05-25"
+DATE_FROM = "2024-05-15"
 QUERY_CACHE_ROM_DB = True
 PRINT_DEBUG_MSG = True
 
@@ -56,7 +78,6 @@ def matlib_loadfont():
 
 def db_connect():
     try:
-        drive.mount('/content/drive')
         engine = create_engine(f'sqlite:///{SQL_DB}')
     except Exception as ex:
         print(ex)
@@ -122,8 +143,8 @@ db_engine = db_connect()
 db_create_table(db_engine)
 print("++api login")
 api.login(
-    api_key=userdata.get("api_key"),     # api key
-    secret_key=userdata.get("secret_key")  # secret key
+    api_key=userdata.get("api_key2"),     # api key
+    secret_key=userdata.get("secret_key2")  # secret key
 )
 print("--api login")
 
@@ -141,8 +162,8 @@ while (step < DATA_ROWS):
     date_str = curr_date.strftime(DATE_FORMATTER)
     date_strs.append(date_str)
     step += 1
-
-#print(api.Contracts.Stocks[STOCK_ID].name())
+stock_name = api.Contracts.Stocks[STOCK_ID].name
+print(stock_name)
 with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
     ticksGenerator = executor.map(query, date_strs, repeat(STOCK_ID), repeat(db_engine))
 api.logout()
@@ -173,7 +194,7 @@ print(df)
 fig = plt.figure()
 matlib_loadfont()
 ax = fig.add_subplot(1, 1, 1)
-fig.suptitle(STOCK_ID)
+fig.suptitle(stock_name)
 plt.plot(df['Date'], df['Price'])
 plt.ylabel("收盤價")
 numsCount = len(df['Date'])
