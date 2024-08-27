@@ -115,7 +115,8 @@ while (step < DATA_ROWS):
     date_str = curr_date.strftime(DATE_FORMATTER)
     date_strs.append(date_str)
     step += 1
-
+stock_name = api.Contracts.Stocks[STOCK_ID].name
+print(stock_name)
 with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
     ticksGenerator = executor.map(query, date_strs, repeat(STOCK_ID), repeat(db_engine))
 api.logout()
@@ -149,7 +150,7 @@ print(df)
 dates = pd.to_datetime([row for row in df['Date']])
 print(df['Date'])
 print(f"to_datetime: {dates}")
-p = figure(title=f"Stock price of {STOCK_ID}", x_axis_label='date', y_axis_label='price', x_axis_type="datetime")
+p = figure(title=f"Stock price of {stock_name}", x_axis_label='date', y_axis_label='price', x_axis_type="datetime")
 p.line(dates, df['Price'])
 numsCount = len(df['Date'])
 tickFramesDump2 = tickFramesDump2.loc[tickFramesDump2['Cached'] == False]
