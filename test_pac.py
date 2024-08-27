@@ -8,6 +8,13 @@
 """
 !pip install shioaji
 
+!wget 'https://noto-website-2.storage.googleapis.com/pkgs/NotoSansCJKtc-hinted.zip'
+!mkdir /tmp/fonts
+!unzip -o NotoSansCJKtc-hinted.zip -d /tmp/fonts/
+!mv /tmp/fonts/NotoSansMonoCJKtc-Regular.otf /usr/share/fonts/truetype/NotoSansMonoCJKtc-Regular.otf -f
+!rm -rf /tmp/fonts
+!rm NotoSansCJKtc-hinted.zip 
+
 from datetime import timedelta, datetime
 import shioaji as sj #https://sinotrade.github.io/
 import time
@@ -21,13 +28,15 @@ from sqlalchemy import Table, Column, Integer, String, MetaData
 from google.colab import drive
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
+import matplotlib.font_manager as font_manager
+import matplotlib.pyplot as plt
 from google.colab import userdata
 import urllib.request
 import json
 
 DATE_FORMATTER = "%Y-%m-%d"
 DATA_ROWS = 100
-STOCK_ID = "0050"
+STOCK_ID = "0056"
 SQL_TABLE = "stock"
 SQL_DB = "/content/drive/MyDrive/py_stock/webpool.db"
 DATE_FROM = "2023-05-25"
@@ -35,7 +44,16 @@ QUERY_CACHE_ROM_DB = True
 PRINT_DEBUG_MSG = True
 
 
-drive.mount('/content/drive')
+
+def matlib_loadfont():
+  # 指定字體
+  font_dirs = ['/usr/share/fonts/truetype/']
+  font_files = font_manager.findSystemFonts(fontpaths=font_dirs)
+
+  for font_file in font_files:
+    font_manager.fontManager.addfont(font_file)
+  plt.rcParams['font.family'] = "Noto Sans Mono CJK TC"
+
 def db_connect():
     try:
         drive.mount('/content/drive')
@@ -151,9 +169,10 @@ print(tickFramesDump2)
 df = tickFramesDump2[~np.isnan(tickFramesDump2.Price)]
 print(df)
 fig = plt.figure()
+matlib_loadfont()
 ax = fig.add_subplot(1, 1, 1)
 plt.plot(df['Date'], df['Price'])
-plt.Axes
+plt.ylabel("收盤價")
 numsCount = len(df['Date'])
 freq_x = 7
 plt.xticks(np.arange(0, numsCount, freq_x), rotation = 50)
